@@ -3571,6 +3571,18 @@ mod tests {
         }
     }
 
+    #[test]
+    fn frameless_caption_close_emits_viewport_close() {
+        use egui_kittest::kittest::Queryable;
+        let mut a = app();
+        a.window_controls = true;
+        let mut h = harness(a);
+        h.run_steps(4);
+        h.query_by_label("Close").expect("the frameless close button is exposed").click();
+        h.run_steps(1);
+        assert!(h.output().viewport_output.values().flat_map(|v| v.commands.iter()).any(|c| matches!(c, egui::ViewportCommand::Close)));
+    }
+
     fn harness(a: WordApp) -> egui_kittest::Harness<'static, WordApp> {
         egui_kittest::Harness::builder().with_size(egui::vec2(1440.0, 900.0)).build_ui_state(
             |ui, app: &mut WordApp| {
