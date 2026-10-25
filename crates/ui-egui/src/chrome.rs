@@ -434,9 +434,13 @@ const RESIZE_CORNER: f32 = 14.0;
 
 /// Draw controls and edge resizing for Linux/BSD frameless windows.
 pub fn window_frame(app: &WordApp, ctx: &egui::Context) {
-    if !app.window_controls { return; }
+    if !app.window_controls {
+        return;
+    }
     let (maximized, fullscreen) = ctx.input(|i| (i.viewport().maximized.unwrap_or(false), i.viewport().fullscreen.unwrap_or(false)));
-    if fullscreen { return; }
+    if fullscreen {
+        return;
+    }
     let t = Tokens::get(ctx);
     let screen = ctx.content_rect();
     let controls = Rect::from_min_size(pos2(screen.max.x - 3.0 * CONTROL_W, screen.min.y), vec2(3.0 * CONTROL_W, TITLE_H));
@@ -451,13 +455,18 @@ pub fn window_frame(app: &WordApp, ctx: &egui::Context) {
                     ui.painter().rect_filled(r, 0.0, egui::Color32::from_rgb(0xC4, 0x2B, 0x1C));
                     egui::Color32::WHITE
                 } else {
-                    if hot { ui.painter().rect_filled(r, 0.0, if response.is_pointer_button_down_on() { t.pressed } else { t.hover }); }
+                    if hot {
+                        ui.painter().rect_filled(r, 0.0, if response.is_pointer_button_down_on() { t.pressed } else { t.hover });
+                    }
                     t.icon
                 };
                 let m = r.center();
                 let stroke = Stroke::new(1.0, color);
                 let tip = match kind {
-                    "minimize" => { ui.painter().line_segment([pos2(m.x - 5.0, m.y), pos2(m.x + 5.0, m.y)], stroke); tl!("Minimize") }
+                    "minimize" => {
+                        ui.painter().line_segment([pos2(m.x - 5.0, m.y), pos2(m.x + 5.0, m.y)], stroke);
+                        tl!("Minimize")
+                    }
                     "maximize" if maximized => {
                         let front = Rect::from_min_size(pos2(m.x - 5.0, m.y - 3.0), vec2(8.0, 8.0));
                         ui.painter().rect_stroke(front, 0.0, stroke, egui::StrokeKind::Inside);
@@ -465,7 +474,10 @@ pub fn window_frame(app: &WordApp, ctx: &egui::Context) {
                         ui.painter().line_segment([pos2(m.x + 5.0, m.y - 5.0), pos2(m.x + 5.0, m.y + 3.0)], stroke);
                         tl!("Restore Down")
                     }
-                    "maximize" => { ui.painter().rect_stroke(Rect::from_center_size(m, vec2(10.0, 10.0)), 0.0, stroke, egui::StrokeKind::Inside); tl!("Maximize") }
+                    "maximize" => {
+                        ui.painter().rect_stroke(Rect::from_center_size(m, vec2(10.0, 10.0)), 0.0, stroke, egui::StrokeKind::Inside);
+                        tl!("Maximize")
+                    }
                     _ => {
                         ui.painter().line_segment([pos2(m.x - 5.0, m.y - 5.0), pos2(m.x + 5.0, m.y + 5.0)], stroke);
                         ui.painter().line_segment([pos2(m.x - 5.0, m.y + 5.0), pos2(m.x + 5.0, m.y - 5.0)], stroke);
@@ -474,23 +486,56 @@ pub fn window_frame(app: &WordApp, ctx: &egui::Context) {
                 };
                 response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tip));
                 if response.on_hover_text(tip).clicked() {
-                    ctx.send_viewport_cmd(match kind { "minimize" => ViewportCommand::Minimized(true), "maximize" => ViewportCommand::Maximized(!maximized), _ => ViewportCommand::Close });
+                    ctx.send_viewport_cmd(match kind {
+                        "minimize" => ViewportCommand::Minimized(true),
+                        "maximize" => ViewportCommand::Maximized(!maximized),
+                        _ => ViewportCommand::Close,
+                    });
                 }
             }
         });
     });
-    if maximized { return; }
-    ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::new("wc_window_border"))).rect_stroke(screen, 0.0, Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
+    if maximized {
+        return;
+    }
+    ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::new("wc_window_border"))).rect_stroke(
+        screen,
+        0.0,
+        Stroke::new(1.0, t.border),
+        egui::StrokeKind::Inside,
+    );
     let Some(pos) = ctx.input(|i| i.pointer.latest_pos()) else { return };
-    if !screen.contains(pos) { return; }
+    if !screen.contains(pos) {
+        return;
+    }
     let near = |d: f32, band: f32| d < band;
     let (dl, dr, dt, db) = (pos.x - screen.min.x, screen.max.x - pos.x, pos.y - screen.min.y, screen.max.y - pos.y);
     let (w, e, n, s) = (near(dl, RESIZE_BAND), near(dr, RESIZE_BAND), near(dt, RESIZE_BAND), near(db, RESIZE_BAND));
     let (cw, ce, cn, cs) = (near(dl, RESIZE_CORNER), near(dr, RESIZE_CORNER), near(dt, RESIZE_CORNER), near(db, RESIZE_CORNER));
-    let hit = if (n && cw) || (w && cn) { Some((ResizeDirection::NorthWest, CursorIcon::ResizeNorthWest)) } else if (n && ce) || (e && cn) { Some((ResizeDirection::NorthEast, CursorIcon::ResizeNorthEast)) } else if (s && cw) || (w && cs) { Some((ResizeDirection::SouthWest, CursorIcon::ResizeSouthWest)) } else if (s && ce) || (e && cs) { Some((ResizeDirection::SouthEast, CursorIcon::ResizeSouthEast)) } else if n { Some((ResizeDirection::North, CursorIcon::ResizeNorth)) } else if s { Some((ResizeDirection::South, CursorIcon::ResizeSouth)) } else if w { Some((ResizeDirection::West, CursorIcon::ResizeWest)) } else if e { Some((ResizeDirection::East, CursorIcon::ResizeEast)) } else { None };
+    let hit = if (n && cw) || (w && cn) {
+        Some((ResizeDirection::NorthWest, CursorIcon::ResizeNorthWest))
+    } else if (n && ce) || (e && cn) {
+        Some((ResizeDirection::NorthEast, CursorIcon::ResizeNorthEast))
+    } else if (s && cw) || (w && cs) {
+        Some((ResizeDirection::SouthWest, CursorIcon::ResizeSouthWest))
+    } else if (s && ce) || (e && cs) {
+        Some((ResizeDirection::SouthEast, CursorIcon::ResizeSouthEast))
+    } else if n {
+        Some((ResizeDirection::North, CursorIcon::ResizeNorth))
+    } else if s {
+        Some((ResizeDirection::South, CursorIcon::ResizeSouth))
+    } else if w {
+        Some((ResizeDirection::West, CursorIcon::ResizeWest))
+    } else if e {
+        Some((ResizeDirection::East, CursorIcon::ResizeEast))
+    } else {
+        None
+    };
     if let Some((direction, icon)) = hit {
         ctx.set_cursor_icon(icon);
-        if !controls.contains(pos) && ctx.input(|i| i.pointer.primary_pressed()) { ctx.send_viewport_cmd(ViewportCommand::BeginResize(direction)); }
+        if !controls.contains(pos) && ctx.input(|i| i.pointer.primary_pressed()) {
+            ctx.send_viewport_cmd(ViewportCommand::BeginResize(direction));
+        }
     }
 }
 
