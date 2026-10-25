@@ -3560,13 +3560,14 @@ mod tests {
             a.start_screen();
             a
         }] {
-            for (id, params) in [
-                ("ui.window.minimize", json!({})),
-                ("ui.window.maximize", json!({"on": true})),
-                ("ui.window.close", json!({})),
-                ("ui.window.beginResize", json!({"direction": "east"})),
+            for (id, params, expected) in [
+                ("ui.window.minimize", json!({}), egui::ViewportCommand::Minimized(true)),
+                ("ui.window.maximize", json!({"on": true}), egui::ViewportCommand::Maximized(true)),
+                ("ui.window.close", json!({}), egui::ViewportCommand::Close),
+                ("ui.window.beginResize", json!({"direction": "east"}), egui::ViewportCommand::BeginResize(egui::ResizeDirection::East)),
             ] {
                 assert!(a.run(id, params).is_ok(), "{id} should dispatch without a document");
+                assert!(a.viewport_commands.contains(&expected), "{id} queues {expected:?}");
             }
         }
     }
