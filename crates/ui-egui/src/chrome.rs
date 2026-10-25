@@ -1,6 +1,6 @@
 //! Title bar (Quick Access Toolbar, title, search, account) and status bar.
 
-use egui::{Align2, CursorIcon, Rect, ResizeDirection, Sense, Stroke, Ui, ViewportCommand, pos2, vec2};
+use egui::{Align2, CursorIcon, Rect, ResizeDirection, Sense, Stroke, Ui, pos2, vec2};
 use serde_json::json;
 use wordcraft_doc::{PartKind, StoryRef};
 
@@ -433,7 +433,7 @@ const RESIZE_BAND: f32 = 5.0;
 const RESIZE_CORNER: f32 = 14.0;
 
 /// Draw controls and edge resizing for Linux/BSD frameless windows.
-pub fn window_frame(app: &WordApp, ctx: &egui::Context) {
+pub fn window_frame(app: &mut WordApp, ctx: &egui::Context) {
     if !app.window_controls {
         return;
     }
@@ -486,11 +486,13 @@ pub fn window_frame(app: &WordApp, ctx: &egui::Context) {
                 };
                 response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tip));
                 if response.on_hover_text(tip).clicked() {
-                    ctx.send_viewport_cmd(match kind {
-                        "minimize" => ViewportCommand::Minimized(true),
-                        "maximize" => ViewportCommand::Maximized(!maximized),
-                        _ => ViewportCommand::Close,
-                    });
+                    let command = match kind {
+                        "minimize" => "ui.window.minimize",
+                        "maximize" => "ui.window.maximize",
+                        _ => "ui.window.close",
+                    };
+                    let params = if kind == "maximize" { json!({"on": !maximized}) } else { json!({}) };
+                    let _ = app.run(command, params);
                 }
             }
         });
@@ -534,8 +536,19 @@ pub fn window_frame(app: &WordApp, ctx: &egui::Context) {
     if let Some((direction, icon)) = hit {
         ctx.set_cursor_icon(icon);
         if !controls.contains(pos) && ctx.input(|i| i.pointer.primary_pressed()) {
-            ctx.send_viewport_cmd(ViewportCommand::BeginResize(direction));
+            let direction = match direction {
+                ResizeDirection::North => "north",
+                ResizeDirection::South => "south",
+                ResizeDirection::East => "east",
+                ResizeDirection::West => "west",
+                ResizeDirection::NorthEast => "northeast",
+                ResizeDirection::NorthWest => "northwest",
+                ResizeDirection::SouthEast => "southeast",
+                ResizeDirection::SouthWest => "southwest",
+            };
+            let _ = app.run("ui.window.beginResize", json!({"direction": direction}));
         }
+        app.flush_viewport_commands(ctx);
     }
 }
 
