@@ -550,6 +550,8 @@ pub struct WordApp {
     pub(crate) dialog_pick: Option<String>,
     /// macOS: the window has no title bar; leave room for the traffic lights.
     pub integrated_titlebar: bool,
+    /// Linux/BSD: the window has no system frame; the title bar draws its controls and edges resize.
+    pub window_controls: bool,
     /// macOS: the title bar's height and where its content starts, around the traffic lights.
     pub mac_titlebar: chrome::MacTitleBar,
     /// Focus (#1678): the ribbon is dropped down from the Focus bar, over the page.
@@ -702,6 +704,7 @@ impl WordApp {
             status_msg: None,
             previews: previews::Previews::default(),
             integrated_titlebar: false,
+            window_controls: false,
             mac_titlebar: chrome::MacTitleBar::default(),
             focus_ribbon: false,
             control_rx: None,
@@ -2469,6 +2472,7 @@ impl WordApp {
         zotero::show_alert(self, &ctx);
         read_aloud::show(self, &ctx);
         crate::keytips::show(self, &ctx, ui);
+        chrome::window_frame(self, &ctx);
         keys::global_shortcuts(self, &ctx);
         self.refocus_after_chrome_click(&ctx);
         if let Some(url) = self.canvas.open_url.take() {
