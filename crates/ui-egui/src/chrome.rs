@@ -289,7 +289,7 @@ pub fn title_bar(app: &mut WordApp, ui: &mut Ui) {
         .show(ui, |ui| {
             let full = ui.max_rect();
             // Drag the window by the title bar (integrated title bar on macOS).
-            let drag = ui.interact(full, ui.id().with("title_drag"), Sense::click_and_drag());
+            let drag = ui.interact(full.shrink(RESIZE_BAND), ui.id().with("title_drag"), Sense::click_and_drag());
             if drag.drag_started() {
                 ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
             }
@@ -510,29 +510,19 @@ pub fn window_frame(app: &mut WordApp, ctx: &egui::Context) {
     if !screen.contains(pos) {
         return;
     }
-    let near = |d: f32, band: f32| d < band;
-    let (dl, dr, dt, db) = (pos.x - screen.min.x, screen.max.x - pos.x, pos.y - screen.min.y, screen.max.y - pos.y);
-    let (w, e, n, s) = (near(dl, RESIZE_BAND), near(dr, RESIZE_BAND), near(dt, RESIZE_BAND), near(db, RESIZE_BAND));
-    let (cw, ce, cn, cs) = (near(dl, RESIZE_CORNER), near(dr, RESIZE_CORNER), near(dt, RESIZE_CORNER), near(db, RESIZE_CORNER));
-    let hit = if (n && cw) || (w && cn) {
-        Some((ResizeDirection::NorthWest, CursorIcon::ResizeNorthWest))
-    } else if (n && ce) || (e && cn) {
-        Some((ResizeDirection::NorthEast, CursorIcon::ResizeNorthEast))
-    } else if (s && cw) || (w && cs) {
-        Some((ResizeDirection::SouthWest, CursorIcon::ResizeSouthWest))
-    } else if (s && ce) || (e && cs) {
-        Some((ResizeDirection::SouthEast, CursorIcon::ResizeSouthEast))
-    } else if n {
-        Some((ResizeDirection::North, CursorIcon::ResizeNorth))
-    } else if s {
-        Some((ResizeDirection::South, CursorIcon::ResizeSouth))
-    } else if w {
-        Some((ResizeDirection::West, CursorIcon::ResizeWest))
-    } else if e {
-        Some((ResizeDirection::East, CursorIcon::ResizeEast))
-    } else {
-        None
-    };
+    let hit = resize_direction(screen, pos).map(|direction| {
+        let icon = match direction {
+            ResizeDirection::North => CursorIcon::ResizeNorth,
+            ResizeDirection::South => CursorIcon::ResizeSouth,
+            ResizeDirection::East => CursorIcon::ResizeEast,
+            ResizeDirection::West => CursorIcon::ResizeWest,
+            ResizeDirection::NorthEast => CursorIcon::ResizeNorthEast,
+            ResizeDirection::NorthWest => CursorIcon::ResizeNorthWest,
+            ResizeDirection::SouthEast => CursorIcon::ResizeSouthEast,
+            ResizeDirection::SouthWest => CursorIcon::ResizeSouthWest,
+        };
+        (direction, icon)
+    });
     if let Some((direction, icon)) = hit {
         ctx.set_cursor_icon(icon);
         if !controls.contains(pos) && ctx.input(|i| i.pointer.primary_pressed()) {
@@ -549,6 +539,32 @@ pub fn window_frame(app: &mut WordApp, ctx: &egui::Context) {
             let _ = app.run("ui.window.beginResize", json!({"direction": direction}));
         }
         app.flush_viewport_commands(ctx);
+    }
+}
+
+fn resize_direction(screen: Rect, pos: egui::Pos2) -> Option<ResizeDirection> {
+    let near = |d: f32, band: f32| d < band;
+    let (dl, dr, dt, db) = (pos.x - screen.min.x, screen.max.x - pos.x, pos.y - screen.min.y, screen.max.y - pos.y);
+    let (w, e, n, s) = (near(dl, RESIZE_BAND), near(dr, RESIZE_BAND), near(dt, RESIZE_BAND), near(db, RESIZE_BAND));
+    let (cw, ce, cn, cs) = (near(dl, RESIZE_CORNER), near(dr, RESIZE_CORNER), near(dt, RESIZE_CORNER), near(db, RESIZE_CORNER));
+    if (n && cw) || (w && cn) {
+        Some(ResizeDirection::NorthWest)
+    } else if (n && ce) || (e && cn) {
+        Some(ResizeDirection::NorthEast)
+    } else if (s && cw) || (w && cs) {
+        Some(ResizeDirection::SouthWest)
+    } else if (s && ce) || (e && cs) {
+        Some(ResizeDirection::SouthEast)
+    } else if n {
+        Some(ResizeDirection::North)
+    } else if s {
+        Some(ResizeDirection::South)
+    } else if w {
+        Some(ResizeDirection::West)
+    } else if e {
+        Some(ResizeDirection::East)
+    } else {
+        None
     }
 }
 
@@ -904,6 +920,14 @@ mod tests {
         let button = |pressed| egui::Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed, modifiers: Default::default() };
         frame(ctx, n, vec![egui::Event::PointerMoved(pos), button(true)], a);
         frame(ctx, n, vec![button(false)], a);
+    }
+
+    #[test]
+    fn frameless_resize_hit_testing_covers_edges_corners_and_control_band() {
+        let screen = Rect::from_min_size(pos2(0.0, 0.0), vec2(800.0, 600.0));
+        assert_eq!(resize_direction(screen, pos2(1.0, 1.0)), Some(ResizeDirection::NorthWest));
+        assert_eq!(resize_direction(screen, pos2(799.0, 599.0)), Some(ResizeDirection::SouthEast));
+        assert_eq!(resize_direction(screen, pos2(400.0, 1.0)), Some(ResizeDirection::North));
     }
 
     /// #701: the arrow beside Undo lists the session's undo steps, newest first; clicking the third
